@@ -49,6 +49,8 @@ export default [
     route("redeem/:code", "routes/redeem.$code.tsx"),
     // PROTOTYPE — Knock spike (#21), prototype/knock-spike branch only
     route("prototype/knock", "routes/prototype.knock.tsx"),
+    // PROTOTYPE — Notification Feed (#24), prototype/notification-feed branch only
+    route("prototype/notifications", "routes/prototype.notifications.tsx"),
   ]),
   route("signup", "routes/signup.tsx"),
   route("login", "routes/login.tsx"),
