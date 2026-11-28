@@ -195,7 +195,8 @@ cd "$(dirname "$0")/.."
 
 TOTAL_STAGES=4
 
-_env_value() { _existing "$1" | sed -e 's/^"//' -e 's/"$//'; }
+# Strip one layer of surrounding quotes, single or double (.env uses both).
+_env_value() { _existing "$1" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//"; }
 SK=$(_env_value KNOCK_SECRET_API_KEY || true)
 CH=$(_env_value KNOCK_FEED_CHANNEL_ID || true)
 if [[ -z "$SK" || -z "$CH" ]]; then
