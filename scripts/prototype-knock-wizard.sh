@@ -191,6 +191,10 @@ finish() {
 # "Does Knock hold up against Cadence?" (ai-hero-dev/cohort-005-project#21).
 # Run from anywhere: bash scripts/prototype-knock-wizard.sh
 
+# Every stage lives inside run_wizard so bash parses the whole file before
+# the first prompt: an edit to this file mid-run can't break the run.
+run_wizard() {
+
 cd "$(dirname "$0")/.."
 
 TOTAL_STAGES=4
@@ -308,3 +312,6 @@ say "Next: run checks 2–4 by hand at ${BOLD}http://localhost:5199/prototype/kn
 pause "Press Enter to finish"
 
 finish
+}
+
+run_wizard "$@"; exit
