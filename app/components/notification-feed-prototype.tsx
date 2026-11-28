@@ -15,6 +15,8 @@
 //   C  Full page      — "Notifications" nav item → /prototype/notifications.
 //                       Category filters, archive, and a toast on arrival
 //                       instead of a popup.
+//   D  Combined       — the user's pick: A's bell and badge, B's rows, C's
+//                       filters (as chips in the popover), badge = UNREAD.
 import {
   createContext,
   useCallback,
@@ -41,12 +43,13 @@ import { cn, formatRelativeTime } from "~/lib/utils";
 import { UserAvatar } from "~/components/user-avatar";
 
 const KNOCK_API = "https://api.knock.app/v1";
-const VARIANTS = ["A", "B", "C"] as const;
+const VARIANTS = ["A", "B", "C", "D"] as const;
 type Variant = (typeof VARIANTS)[number];
 const VARIANT_NAMES: Record<Variant, string> = {
   A: "Bell popover",
   B: "Side drawer",
   C: "Full page",
+  D: "Combined pick",
 };
 
 export type FeedAuth = {
@@ -467,47 +470,120 @@ function DrawerB() {
               {shown.length === 0 && (
                 <Empty text={tab === "unread" ? "You're all caught up." : undefined} />
               )}
-              {shown.map((item) => {
-                const k = kindOf(item);
-                const detail = "detail" in k ? k.detail?.(item.data) : null;
+              {shown.map((item) => (
+                <RowB key={item.id} item={item} onOpen={openItem} />
+              ))}
+            </div>
+          </aside>
+        </>
+      )}
+    </>
+  );
+}
+
+function RowB({ item, onOpen }: { item: FeedItem; onOpen: (i: FeedItem) => void }) {
+  const { mark } = useFeed();
+  const k = kindOf(item);
+  const detail = "detail" in k ? k.detail?.(item.data) : null;
+  return (
+    <div
+      className={cn(
+        "group relative flex gap-3 rounded-lg border p-3 text-sm",
+        !item.read_at ? "border-l-4 border-l-primary" : "opacity-70"
+      )}
+    >
+      <div
+        className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", k.tone)}
+      >
+        {k.icon}
+      </div>
+      <button onClick={() => onOpen(item)} className="min-w-0 flex-1 text-left">
+        <div>{k.line(item.data)}</div>
+        {detail && (
+          <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{detail}</div>
+        )}
+        <div className="mt-1 text-xs text-muted-foreground">
+          {formatRelativeTime(item.inserted_at)}
+        </div>
+      </button>
+      <button
+        onClick={() => mark(item.read_at ? "unread" : "read", [item.id])}
+        className="invisible self-start rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent group-hover:visible"
+      >
+        {item.read_at ? "Mark unread" : "Mark read"}
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Variant D — the pick: A's bell + badge, B's rows, C's filters; count unread
+// ---------------------------------------------------------------------------
+
+function BellD() {
+  const { items, mark } = useFeed();
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<Category | null>(null);
+  const { unread } = counts(items);
+  const openItem = useOpenNotification(() => setOpen(false));
+  const shown = filter ? items.filter((i) => kindOf(i).category === filter) : items;
+  const unreadShown = shown.filter((i) => !i.read_at);
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(!open)}
+        title="Notifications"
+        className="relative rounded-md p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent"
+      >
+        <Bell className="size-5" />
+        {unread > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-4 text-white">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed left-[13.5rem] top-3 z-50 flex max-h-[80vh] w-[420px] flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-xl">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <span className="font-semibold">Notifications</span>
+              <button
+                disabled={unreadShown.length === 0}
+                onClick={() => mark("read", unreadShown.map((i) => i.id))}
+                className="text-xs text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+              >
+                Mark all as read
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5 border-b px-4 py-2 text-xs">
+              {CATEGORIES.map((c) => {
+                const n = items.filter(
+                  (i) => !i.read_at && (c.key === null || kindOf(i).category === c.key)
+                ).length;
                 return (
-                  <div
-                    key={item.id}
+                  <button
+                    key={c.label}
+                    onClick={() => setFilter(c.key)}
                     className={cn(
-                      "group relative flex gap-3 rounded-lg border p-3 text-sm",
-                      !item.read_at ? "border-l-4 border-l-primary" : "opacity-70"
+                      "rounded-full border px-2.5 py-0.5",
+                      filter === c.key ? "border-foreground bg-foreground text-background" : "hover:bg-accent"
                     )}
                   >
-                    <div
-                      className={cn(
-                        "flex size-8 shrink-0 items-center justify-center rounded-full",
-                        k.tone
-                      )}
-                    >
-                      {k.icon}
-                    </div>
-                    <button onClick={() => openItem(item)} className="min-w-0 flex-1 text-left">
-                      <div>{k.line(item.data)}</div>
-                      {detail && (
-                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                          {detail}
-                        </div>
-                      )}
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {formatRelativeTime(item.inserted_at)}
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => mark(item.read_at ? "unread" : "read", [item.id])}
-                      className="invisible self-start rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent group-hover:visible"
-                    >
-                      {item.read_at ? "Mark unread" : "Mark read"}
-                    </button>
-                  </div>
+                    {c.label}
+                    {n > 0 && <span className="ml-1 opacity-70">{n}</span>}
+                  </button>
                 );
               })}
             </div>
-          </aside>
+            <div className="flex-1 space-y-2 overflow-y-auto p-3">
+              {shown.length === 0 && <Empty />}
+              {shown.map((item) => (
+                <RowB key={item.id} item={item} onOpen={openItem} />
+              ))}
+            </div>
+          </div>
         </>
       )}
     </>
@@ -698,7 +774,9 @@ function Empty({ text = "No Notifications yet." }: { text?: string }) {
 
 export function FeedSidebarHeaderSlot() {
   const [variant] = useVariant();
-  return variant === "A" ? <BellA /> : null;
+  if (variant === "A") return <BellA />;
+  if (variant === "D") return <BellD />;
+  return null;
 }
 
 export function FeedSidebarNavSlot() {
