@@ -13,8 +13,11 @@ set -euo pipefail
 # ──────────────────────────────────────────────────────────────────────────
 
 if [[ -t 1 ]] && command -v tput >/dev/null 2>&1 && [[ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]]; then
-  BOLD=$(tput bold); DIM=$(tput dim); RESET=$(tput sgr0)
-  BLUE=$(tput setaf 4); GREEN=$(tput setaf 2); YELLOW=$(tput setaf 3); RED=$(tput setaf 1)
+  # Not every terminfo entry has every capability (macOS xterm-256color lacks
+  # dim), and a failing tput would trip set -e, so a missing one is just blank.
+  _tp() { tput "$@" 2>/dev/null || true; }
+  BOLD=$(_tp bold); DIM=$(_tp dim); RESET=$(_tp sgr0)
+  BLUE=$(_tp setaf 4); GREEN=$(_tp setaf 2); YELLOW=$(_tp setaf 3); RED=$(_tp setaf 1)
 else
   BOLD=""; DIM=""; RESET=""; BLUE=""; GREEN=""; YELLOW=""; RED=""
 fi
