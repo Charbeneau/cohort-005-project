@@ -239,6 +239,7 @@ say "Cadence draws each row itself from the data sent with it, so the template b
 open_url "$DASHBOARD"
 step "Make sure the environment switcher (top left) says Development."
 step "Workflows → Create workflow. Name it 'prototype-feed'; the key must be exactly: ${BOLD}$WORKFLOW${RESET}"
+step "Trigger type: ${BOLD}API call${RESET} (Cadence triggers it from the server; not Source event or Audience)."
 step "No categories needed. Save to open the workflow builder."
 step "Add a channel step → In-app feed → choose your feed channel (ID ${BOLD}$CH${RESET})."
 step "Open the step's template and set the markdown body to:"
